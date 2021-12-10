@@ -1,0 +1,86 @@
+import csv
+import sys
+import math
+import pandas as pd
+
+
+def csv_calc(_path, PipeMaterial, FluidType, FluidMeanTemperature):
+    df = pd.read_csv(_path)  # SET UP DATA FRAME FOR CSV DATA
+
+    df.head()  # CREATE TABLE OF DATA FRAME
+
+    if PipeMaterial == "Steel":
+        PipeRoughness = 0.0001476
+    elif PipeMaterial == "Copper":
+        PipeRoughness = 0.0000328
+
+    # INITIALIZE LIST TO APPEND TO END OF TABLE
+    fluid_viscosity = []
+    fluid_density = []
+    velocity = []
+    reynoldsnumber = []
+    friction_factor = []
+    pressureloss100 = []
+    totalpressureloss = []
+
+    for i, row in df.iterrows():
+        # CALCULATIONS PER ROW OF DATA FRAME
+        if FluidType == "Water":
+            fluid_viscosity_i = 0.00210562+(-0.0000374043)*FluidMeanTemperature+0.000000321169*(
+                FluidMeanTemperature**2)+(-0.00000000133534)*(FluidMeanTemperature**3)+0.00000000000213185*(FluidMeanTemperature**4)
+            fluid_density_i = 62.3144+0.007746645*FluidMeanTemperature + \
+                (-0.0001246517)*(FluidMeanTemperature**2) + \
+                0.000000155184*(FluidMeanTemperature**3)
+        elif FluidType == "30 Percent PG":
+            fluid_viscosity_i = 0.0067498+(-0.00009872)*FluidMeanTemperature+0.00000053763*(
+                FluidMeanTemperature**2)+(-0.00000000101515)*(FluidMeanTemperature**3)
+            fluid_density_i = 64.52525+0.00195655*FluidMeanTemperature + \
+                (-0.000112956)*(FluidMeanTemperature**2) + \
+                0.00000011992*(FluidMeanTemperature**3)
+        elif FluidType == "30 Percent EG":
+            fluid_viscosity_i = 0.005046+(-0.0000938)*FluidMeanTemperature+0.000000774*(
+                FluidMeanTemperature**2)+(-0.000000003)*(FluidMeanTemperature**3)+0.00000000000443*(FluidMeanTemperature**4)
+            fluid_density_i = 65.9902+(-0.00658107)*FluidMeanTemperature+(-0.000047192)*(
+                FluidMeanTemperature**2)+0.00000000028258*(FluidMeanTemperature**3)
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        fluid_viscosity.append(fluid_viscosity_i)
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        fluid_density.append(fluid_density_i)
+        velocity_i = row['Flow'] / \
+            (7.4805*60*((row['Inside Diameter']/12)**2)*math.pi/4)
+        velocity.append(velocity_i)  # MAKE LIST OF VALUES TO APPEND FROM CALC
+        reynoldsnumber_i = row['Inside Diameter']/12 * \
+            velocity_i*fluid_density_i/fluid_viscosity_i
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        reynoldsnumber.append(reynoldsnumber_i)
+        friction_factor_i = 1
+        for i in range(0, 1000, 1):
+            # is there an iteration option.
+            friction_factor_i = (-0.5/math.log10(PipeRoughness/(
+                3.7*row['Inside Diameter']/12)+2.51/(reynoldsnumber_i*(friction_factor_i**0.5))))**2
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        friction_factor.append(friction_factor_i)
+        pressureloss100_i = friction_factor_i*100 * \
+            (velocity_i**2)/(row['Inside Diameter']/12*32.2*2)
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        pressureloss100.append(pressureloss100_i)
+        totalpressureloss_i = pressureloss100_i*row['Length']/100
+        # MAKE LIST OF VALUES TO APPEND FROM CALC
+        totalpressureloss.append(totalpressureloss_i)
+
+    # APPEND LISTS TO DATA FRAME
+    df['Viscosity'] = fluid_viscosity
+    df['Density'] = fluid_density
+    df['Velocity'] = velocity
+    df['Reynolds Number'] = reynoldsnumber
+    df['Friction Factor'] = friction_factor
+    df['Pressure Loss 100ft'] = pressureloss100
+    df['Total Pressure Loss'] = totalpressureloss
+
+    df.head()  # PRINT DATA FRAME TABLE AGAIN
+    df = df.round(decimals=4)
+    df.to_csv('WatersidePumpHeadTool_Results.csv')  # SEND DATA FRAME TO CSV
+    '''
+    df.to_excel(EXCEL FILE PATH, sheet_name='Sheet1',na_rep = '', float_format ="%.2f")
+    '''
+    return (df)
