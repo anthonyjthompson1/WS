@@ -1,0 +1,89 @@
+import PySimpleGUI as sg
+from waterPumpCalcs.ws_calcs_df import df_csv_calc
+import pandas as pd
+import sys
+import os
+
+
+def init_data():
+    obj = [['Upload_file',
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0,
+           0.0]]
+    return obj
+
+
+def init_headings():
+    obj = ['System Type',
+           'Flow',
+           'Inside Diameter',
+           'Length',
+           'Viscosity',
+           'Density',
+           'Velocity',
+           'Reynolds Number',
+           'Friction Factor',
+           'Pressure Loss 100ft',
+           'Total Pressure Loss']
+    return obj
+
+
+def from_df(_df, _pm, _fty, _fftem):
+    df = df_csv_calc(_df, _pm, _fty, _fftem)
+    return((df.values.tolist(), df))
+
+
+init_d = init_data()
+init_h = init_headings()
+
+
+def main():
+    layout = [[sg.Text('Enter path to csv file'), sg.Input(key='-PATH-'), sg.FileBrowse()],
+              [sg.Text("Pipe Material: "), sg.Combo(
+                  values=("Steel", "Copper"), default_value="Steel", key='-MATERIAL-')],
+              [sg.Text("Fluid Type: "), sg.Combo(values=("Water", "30 Percent PG",
+                                                         "30 Percent EG"), default_value="Water", key='-FLUID-')],  # , key = "fluid"],
+              [sg.Text('Fluid Mean Temperature: '),
+               sg.Input(key='-TEMPERATURE-')],
+              [sg.Table(values=init_d,
+                        headings=init_h,
+                        auto_size_columns=False,
+                        col_widths=list(
+                            map(lambda x:len(x)+1, list(init_h))),
+                        justification='left', key='-TABLE-')],
+              [sg.Button('OK'), sg.Button('Cancel')],
+              [sg.Button('Export to Excel', key='-EXCEL-', visible=False)]
+              ]
+    window1 = sg.Window('Waterside Pump Head Loss Tool',
+                        layout, icon='resources\\br+alogo.ico')
+
+    while True:
+        event, values = window1.read()
+        if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
+            break
+        _path = values['-PATH-']
+        PipeMaterial = values['-MATERIAL-']
+        FluidType = values['-FLUID-']
+        FluidMeanTemperature = values["-TEMPERATURE-"]
+        if event == 'OK':
+            df = pd.read_csv(_path)
+            update_table_from_file = from_df(
+                df, PipeMaterial, FluidType, float(FluidMeanTemperature))
+            window1['-TABLE-'].update(values=update_table_from_file[0])
+            window1['-EXCEL-'].update(visible=True)
+        if event == '-EXCEL-':
+            df = pd.read_csv(_path)
+            update_table_from_file = from_df(
+                df, PipeMaterial, FluidType, float(FluidMeanTemperature))
+            update_table_from_file[1].to_csv('PumpHeadLossResults.csv')
+
+
+if __name__ == "__main__":
+    main()
